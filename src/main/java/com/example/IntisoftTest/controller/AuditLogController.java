@@ -1,6 +1,8 @@
 package com.example.IntisoftTest.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,29 +27,42 @@ public class AuditLogController {
     private JwtUtil jwtUtil;
 
     @GetMapping
-    public ResponseEntity<?> getAllLogs(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<Map<String, Object>> getAllLogs(@RequestHeader("Authorization") String authHeader) {
+        Map<String, Object> response = new HashMap<>();
+
         try {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing or invalid Authorization header");
+                response.put("status", HttpStatus.UNAUTHORIZED.value());
+                response.put("message", "Missing or invalid Authorization header");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
 
-            String token = authHeader.substring(7); // Menghapus "Bearer "
+            String token = authHeader.substring(7);
 
             if (!jwtUtil.validateToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+                response.put("status", HttpStatus.UNAUTHORIZED.value());
+                response.put("message", "Invalid token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
 
             String role = jwtUtil.extractRole(token);
             if (!"SUPER_ADMIN".equals(role)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied: Requires SUPER_ADMIN role");
+                response.put("status", HttpStatus.FORBIDDEN.value());
+                response.put("message", "Access denied: Requires SUPER_ADMIN role");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
             List<AuditLog> logs = auditLogRepository.findAll();
-            return ResponseEntity.ok(logs);
+            response.put("status", HttpStatus.OK.value());
+            response.put("message", "Success");
+            response.put("data", logs);
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("Internal server error: " + e.getMessage());
+            response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+            response.put("message", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }
